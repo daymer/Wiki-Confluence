@@ -1,8 +1,8 @@
 from PythonConfluenceAPI import ConfluenceAPI
 
-api = ConfluenceAPI('admin', '123@qwe', 'http://ee.support2.veeam.local')
-#spaces = api.get_space_content('TKB')
-#print(spaces)
+api = ConfluenceAPI('admin', '123@qwe', 'http://127.0.0.1:8090')
+spaces = api.get_space_content('TKB')
+print(spaces)
 PageBody = '<ac:layout><ac:layout-section ac:type="two_equal"><ac:layout-cell>' \
             '<h2>General info:</h2>' \
             '<ac:structured-macro ac:name="details"><ac:parameter ac:name="id">1</ac:parameter><ac:rich-text-body>' \
