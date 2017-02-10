@@ -22,113 +22,141 @@ for page in site.allpages():
             BugID_SUBJECT = BugID.group(2)
         textALL = page.text(0)
         if not textALL:
-            print('Page' + page.name + 'has no text')
+            print('ERROR: Page "' + page.name + '" has no text')
+        elif textALL.startswith('#REDIRECT'):
+            print('Page "' + page.name + '" is only a redirect page, skipping')
         else:
             print(page.name)
-            #print(textALL)
             BugCaseID = re.findall(r"'''Case ID: '''(\d*)", textALL)
             BugToBeFixedIn = re.findall(r"'''To be fixed in: '''(.*)", textALL)
+            if not BugToBeFixedIn:
+                BugToBeFixedIn = re.findall(r"'''Fixed in: '''(.*)", textALL)
             BugPrivateFix = re.findall(r"'''Private fix: '''(.*)", textALL)
             BugAdded = re.findall(r"'''Added: '''(.*) by", textALL)
             BugAddedBy = re.findall(r"by \[\[User:.*\|(.*)\]\]", textALL)
             BugComponents = re.findall(r"'''Components: '''(.*)", textALL)
             if not BugCaseID:
-                print('Page' + page.name + ' BugCaseID was not found')
+                print('ERROR: Page' + page.name + ' BugCaseID was not found')
+                print(textALL)
             elif not BugToBeFixedIn:
-                print('Page' + page.name + ' BugToBeFixedIn was not found')
+                print('ERROR: Page' + page.name + ' BugToBeFixedIn was not found')
+                print(textALL)
             elif not BugPrivateFix:
-                print('Page' + page.name + ' BugPrivateFix was not found')
+                print('ERROR: Page' + page.name + ' BugPrivateFix was not found')
+                print(textALL)
             elif not BugAdded:
-                print('Page' + page.name + ' BugPrivateFix was not found')
+                print('ERROR: Page' + page.name + ' BugPrivateFix was not found')
+                print(textALL)
             elif not BugAddedBy:
-                print('Page' + page.name + ' BugAddedBy was not found')
+                print('ERROR: Page' + page.name + ' BugAddedBy was not found')
+                print(textALL)
             elif not BugComponents:
-                print('Page' + page.name + ' BugComponents was not found')
+                print('ERROR: Page' + page.name + ' BugComponents was not found')
+                print(textALL)
             else:
-                #print(BugID_NUM, BugID_SUBJECT)
-                #print('BugCaseID = ' + BugCaseID[0])
-                request = str(
-                    sf.query(
-                        "SELECT Versionselect__c, Hypervisor_c__c FROM case where CaseNumber ='" + BugCaseID[0] + "'"))
-                CaseVersionHypervisor = re.findall(r"'VersionSelect__c', '([\d.]*)'\), \('Hypervisor_c__c', '(.*)'",
-                                                   request)
-                #print('CaseVersion = ' + CaseVersionHypervisor[0][0] + ' CaseHypervisor = ' + CaseVersionHypervisor[0][1])
-                #print('BugToBeFixedIn = ' + BugToBeFixedIn[0])
-                #print('BugPrivateFix = ' + BugPrivateFix[0])
+                if int(BugCaseID[0]) > 0:
+                    request = str(
+                        sf.query(
+                            "SELECT Versionselect__c, Hypervisor_c__c FROM case where CaseNumber ='" + BugCaseID[0] + "'"))
+                    CaseVersionHypervisor = re.findall(r"'VersionSelect__c', '([\d.]*)'\), \('Hypervisor_c__c', '(.*)'",
+                                                       request)
+                    if CaseVersionHypervisor:
+                        print(CaseVersionHypervisor[0][0] + ' ' + CaseVersionHypervisor[0][1])
+                    else:
+                        CaseVersionHypervisor = ['NONE', 'NONE']
+                        print('ERROR: CaseVersionHypervisor wasn\'t found due SF lags, let it be NONE')
+                        print(request)
+                else:
+                    CaseVersionHypervisor = ['NONE', 'NONE']
+                    print('WARNING: Unable to check case number ' + BugCaseID[0])
                 if BugPrivateFix[0] != 'n/a':
                     StatusMacro = '<ac:structured-macro ac:name="status"><ac:parameter ac:name="colour">Green' \
                                   '</ac:parameter><ac:parameter ac:name="title">fixed</ac:parameter><ac:parameter ac:name="subtle">true</ac:parameter></ac:structured-macro>'
                 else:
                     StatusMacro = '<ac:structured-macro ac:name="status"><ac:parameter ac:name="colour">Red' \
                                   '</ac:parameter><ac:parameter ac:name="title">not fixed</ac:parameter><ac:parameter ac:name="subtle">true</ac:parameter></ac:structured-macro>'
-                #print('BugAdded = ' + BugAdded[0])
-                #print('BugAddedBy = ' + BugAddedBy[0])
                 textDescription = page.text(1)
                 #print(textDescription)
                 textSolution = page.text(2)
                 #print(textSolution)
-
                 PagesBUGSList.append(page)
-
-                print('BugComponents = ' + str(BugComponents))
                 #submitting bug to EE
-                PageBody = ''
-                PageBody = str('<ac:layout>' \
-                           '<ac:layout-section ac:type="two_equal"><ac:layout-cell>'\
-                           '<h2>General info:</h2>' \
-                           '<ac:structured-macro ac:name="details"><ac:parameter ac:name="id">1' \
-                           '</ac:parameter><ac:rich-text-body>' \
-                           '<table>' \
-                           '<tbody>' \
-                           '<tr>' \
-                           '<td><strong>Case ID:</strong></td>' \
-                           '<td colspan="1">' + BugCaseID[0] + '</td></tr>' \
-                           '<tr>' \
-                           '<td><strong>Found in Version:</strong></td>' \
-                           '<td colspan="1">' + CaseVersionHypervisor[0][0] + '</td></tr>' \
-                           '<tr>' \
-                           '<td><strong>Hypervisor in case:</strong></td>' \
-                           '<td colspan="1">' + CaseVersionHypervisor[0][1] + '</td></tr>' \
-                           '<tr>' \
-                           '<td><strong>To be fixed in:</strong></td>' \
-                           '<td colspan="1">' + BugToBeFixedIn[0] + '</td></tr>' \
-                           '<tr>' \
-                           '<td><strong>Current status:</strong></td>' \
-                           '<td colspan="1">' + StatusMacro + '</td></tr>' \
-                           '<tr>' \
-                           '<td><strong>Added:</strong></td>' \
-                           '<td colspan="1">' + BugAdded[0] + '</td></tr>' \
-                           '<tr>' \
-                           '<td><strong>Added by:</strong></td>' \
-                           '<td colspan="1">' + BugAddedBy[0] + '</td></tr>' \
-                           '<tr>' \
-                           '<td colspan="1"><strong>Components:&nbsp;</strong></td>' \
-                           '<td colspan="1"><span>' + str(123) + '</span></td></tr>' \
-                           '</tbody></table></ac:rich-text-body></ac:structured-macro></ac:layout-cell><ac:layout-cell>' \
-                           '<p><ac:structured-macro ac:name="attachments" /></p>' \
-                           '</ac:layout-cell></ac:layout-section><ac:layout-section ac:type="single">' \
-                           '<ac:layout-cell>' \
-                           '<h2><span class="mw-headline">Description</span></h2>' \
-                           '<h2><span class="mw-headline">Solution</span></h2>'\
-                           '</ac:layout-cell>'\
-                           '<p><span class="mw-headline"><br /></span></p></ac:layout-section></ac:layout>')
-                           #'<p>' + textSolution + '</p>'
-                           #'<p>' + textDescription + '</p>' \
+                DictPage = {
+                    'PageBugID_NUM': BugID_NUM,
+                    'BugID_SUBJECT': BugID_SUBJECT,
+                    'PageCaseID': BugCaseID[0],
+                    'PageCaseVersion': CaseVersionHypervisor[0][0],
+                    'PageCaseHypervisor': CaseVersionHypervisor[0][1],
+                    'PageToBeFixedIn': BugToBeFixedIn[0],
+                    'PageStatusMacro': StatusMacro,
+                    'PageAdded': BugAdded[0],
+                    'PageAddedBy': BugAddedBy[0],
+                    'PageComponents': BugComponents[0]
+                }
+
+                def PageGen(Dict):
+                    pagebody = str('<ac:layout>'
+                                   '<ac:layout-section ac:type="two_equal"><ac:layout-cell>'\
+                                   '<h2>General info:</h2>' \
+                                   '<ac:structured-macro ac:name="details"><ac:parameter ac:name="id">1' \
+                                   '</ac:parameter><ac:rich-text-body>' \
+                                   '<table>' \
+                                   '<tbody>' \
+                                   '<tr>' \
+                                   '<td><strong>Case ID:</strong></td>' \
+                                   '<td colspan="1">' + Dict['PageCaseID'] + '</td></tr>' \
+                                   '<tr>' \
+                                   '<td><strong>Found in Version:</strong></td>' \
+                                   '<td colspan="1">' + Dict['PageCaseVersion'] + '</td></tr>' \
+                                   '<tr>' \
+                                   '<td><strong>Hypervisor in case:</strong></td>' \
+                                   '<td colspan="1">' + Dict['PageCaseHypervisor'] + '</td></tr>' \
+                                   '<tr>' \
+                                   '<td><strong>To be fixed in:</strong></td>' \
+                                   '<td colspan="1">' + Dict['PageToBeFixedIn'] + '</td></tr>' \
+                                   '<tr>' \
+                                   '<td><strong>Current status:</strong></td>' \
+                                   '<td colspan="1">' + Dict['PageStatusMacro'] + '</td></tr>' \
+                                   '<tr>' \
+                                   '<td><strong>Added:</strong></td>' \
+                                   '<td colspan="1">' + Dict['PageAdded'] + '</td></tr>' \
+                                   '<tr>' \
+                                   '<td><strong>Added by:</strong></td>' \
+                                   '<td colspan="1">' + Dict['PageAddedBy'] + '</td></tr>' \
+                                   '<tr>' \
+                                   '<td colspan="1"><strong>Components:&nbsp;</strong>'
+                                   '</td><td colspan="1"><span>' + Dict['PageComponents'] + '</span></td></tr>' \
+                                   '</tbody></table></ac:rich-text-body></ac:structured-macro></ac:layout-cell><ac:layout-cell>' \
+                                   '<p><ac:structured-macro ac:name="attachments" /></p>' \
+                                   '</ac:layout-cell></ac:layout-section><ac:layout-section ac:type="single">' \
+                                   '<ac:layout-cell>' \
+                                   '<h2><span class="mw-headline">Description</span></h2>' \
+                                   '<h2><span class="mw-headline">Solution</span></h2>'\
+                                   '</ac:layout-cell>'\
+                                   '<p><span class="mw-headline"><br /></span></p></ac:layout-section></ac:layout>')
+                                   #'<p>' + textSolution + '</p>'
+                                   #'<p>' + textDescription + '</p>' \
+                    title = "Bug " + Dict['PageBugID_NUM'] + " " + Dict['BugID_SUBJECT']
+                    pagecontent = {
+                        "type": "page",
+                        "title": title,
+                        "ancestors": [{"type": "page", "id": 13434925}],
+                        #http://ee.support2.veeam.local/display/TKB/Found+Bugs
+                        "space": {
+                            "key": "TKB"
+                        },
+                        "body": {
+                            "storage": {
+                                "value": pagebody,
+                                "representation": "storage"
+                            }
+                        }
+                    }
+                    return pagecontent
+
+                PageContentGenerated = PageGen(DictPage)
                 title = "Bug " + BugID_NUM + " " + BugID_SUBJECT
-                content = {
-                                "type": "page",
-                                "title": title,
-                                "ancestors": [{"type": "page", "id": 13434925}],  # http://ee.support2.veeam.local/display/TKB/Found+Bugs
-                                "space": {
-                                    "key": "TKB"
-                                },
-                                "body": {
-                                    "storage": {
-                                        "value": PageBody,
-                                        "representation": "storage"
-                                    }
-                                }
-                 }
+
                 #api.create_new_content(content)
                 print('...migrated')
 
